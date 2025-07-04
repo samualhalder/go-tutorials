@@ -3,7 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
+	"sync"
+	"time"
 )
 
 var (
@@ -55,7 +56,9 @@ func (t *ElectricTruck) GetId() string {
 }
 
 func processTruck(truck Truck) error {
+
 	fmt.Printf("Processing truck %s\n", truck.GetId())
+	time.Sleep(time.Second)
 
 	err := truck.LoadTruck()
 	if err != nil {
@@ -65,17 +68,30 @@ func processTruck(truck Truck) error {
 	if err != nil {
 		return fmt.Errorf("error loading cargo: %w", err)
 	}
+	fmt.Printf("Processed truck %s\n", truck.GetId())
+	return nil
+}
+
+func processFleet(trucks []Truck) error {
+	var wg sync.WaitGroup
+	for _, truck := range trucks {
+		wg.Add(1)
+		go func() {
+			processTruck(truck)
+			wg.Done()
+		}()
+	}
+	wg.Wait()
 	return nil
 }
 
 func main() {
-	nt := &NormalTruck{id: "nt-1"}
-	et := &ElectricTruck{id: "et-1"}
-	if err := processTruck(nt); err != nil {
-		log.Fatal(err)
+	fleet := []Truck{
+		&NormalTruck{id: "nt-1", cargo: 10},
+		&ElectricTruck{id: "et-1", cargo: 11, battery: 100},
+		&NormalTruck{id: "nt-2", cargo: 10},
+		&ElectricTruck{id: "et-2", cargo: 20, battery: 100},
 	}
-	if err := processTruck(et); err != nil {
-		log.Fatal(err)
-	}
-	log.Println(nt.cargo, et.battery)
+	processFleet(fleet)
+
 }
